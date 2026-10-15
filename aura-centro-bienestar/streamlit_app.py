@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import date
 from html import escape
+from pathlib import Path
 from urllib.parse import quote_plus
 import base64
 import streamlit as st
@@ -8,11 +9,16 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Aura | Centro de Bienestar", page_icon="✦", layout="wide", initial_sidebar_state="collapsed")
 
+LOGO_PATH = Path(__file__).parent / "assets" / "aura-logo.png"
+DEFAULT_LOGO = {"mime": "image/png", "data": LOGO_PATH.read_bytes()} if LOGO_PATH.exists() else None
+
 DEFAULT = {
     "business": {
+        "name": "AURA",
         "city": "Cali, Colombia",
         "address": "Cali, Colombia",
         "phone": "573102035750",
+        "logo": DEFAULT_LOGO,
         "title": "El bienestar también es una forma de volver a ti.",
         "subtitle": "Cuidamos de tu cuerpo y tu calma con tratamientos personalizados para sentirte, verte y vivir mejor.",
         "hero_image": None,
@@ -37,6 +43,8 @@ DEFAULT = {
 if "aura_data" not in st.session_state:
     st.session_state.aura_data = deepcopy(DEFAULT)
 st.session_state.aura_data.setdefault("blocked_slots", [])
+for business_key, default_value in DEFAULT["business"].items():
+    st.session_state.aura_data["business"].setdefault(business_key, deepcopy(default_value))
 if "aura_page" not in st.session_state:
     st.session_state.aura_page = "Inicio"
 if "aura_admin_ok" not in st.session_state:
@@ -45,12 +53,14 @@ if "hero_upload_version" not in st.session_state:
     st.session_state.hero_upload_version = 0
 if "gallery_upload_version" not in st.session_state:
     st.session_state.gallery_upload_version = 0
+if "logo_upload_version" not in st.session_state:
+    st.session_state.logo_upload_version = 0
 
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap');
 :root{--ink:#2d332a;--olive:#697258;--sage:#c8cbb6;--cream:#f8f6ef;--sand:#e8e0cf;--gold:#a9925c;--line:rgba(45,51,42,.14)}
 #MainMenu,footer,header[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stStatusWidget"],[data-testid="stSidebar"]{display:none!important}
-.stApp{background:var(--cream);color:var(--ink);font-family:'DM Sans',sans-serif}.block-container{max-width:1240px;padding:1.2rem 2rem 3.5rem}.stMarkdown p{line-height:1.65}.aura-top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0 15px;margin-bottom:17px}.aura-logo{display:flex;align-items:center;gap:10px;color:var(--ink)}.aura-seal{width:35px;height:38px;border:1px solid var(--gold);border-radius:55% 0 55% 0;transform:rotate(-25deg);display:grid;place-items:center;color:var(--olive);font:20px Georgia,serif}.aura-word{font:600 22px 'Playfair Display',serif;letter-spacing:3px;line-height:.85}.aura-word small{display:block;font:6px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-top:6px}.aura-location{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:var(--olive)}
+.stApp{background:var(--cream);color:var(--ink);font-family:'DM Sans',sans-serif}.block-container{max-width:1240px;padding:1.2rem 2rem 3.5rem}.stMarkdown p{line-height:1.65}.aura-top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0 15px;margin-bottom:17px}.aura-logo{display:flex;align-items:center;gap:10px;color:var(--ink);min-width:0}.aura-seal{width:35px;height:38px;border:1px solid var(--gold);border-radius:55% 0 55% 0;transform:rotate(-25deg);display:grid;place-items:center;color:var(--olive);font:20px Georgia,serif;flex:none}.brand-mark{width:150px;height:58px;object-fit:contain;flex:none}.aura-word{font:600 22px 'Playfair Display',serif;letter-spacing:2px;line-height:1.05;text-transform:uppercase;overflow-wrap:anywhere}.aura-word small{display:block;font:6px 'DM Sans',sans-serif;letter-spacing:2px;text-transform:uppercase;margin-top:6px}.aura-location{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:var(--olive)}
 .eyebrow{font-size:10px!important;letter-spacing:2px!important;text-transform:uppercase;color:var(--olive)!important;font-weight:700!important;margin:0 0 16px!important}.hero-title{font:500 clamp(44px,5.15vw,68px)/1.04 'Playfair Display',Georgia,serif;letter-spacing:-2px;color:var(--ink);margin:0}.hero-title em,.section-title em,.location-title em{font-weight:500;color:var(--gold)}.hero-copy{font-size:15px;color:#62665b;max-width:460px;margin:22px 0 22px}.hero-art{height:438px;position:relative;overflow:hidden;background:linear-gradient(145deg,#d9d7c8,#b4b59f);background-size:cover;background-position:center}.hero-sun{position:absolute;width:275px;height:275px;border-radius:50%;background:#dfc58c;right:-45px;top:-53px;opacity:.6}.hero-arch{position:absolute;width:265px;height:360px;border:45px solid #f2eedf;border-bottom:0;border-radius:150px 150px 0 0;bottom:0;left:18%}.hero-leaf{position:absolute;right:47px;bottom:47px;width:73px;height:165px;border-radius:100% 0 100% 0;background:#697258;transform:rotate(-37deg);opacity:.9}.hero-leaf.second{right:112px;bottom:17px;width:58px;height:125px;background:#879178;transform:rotate(32deg)}.hero-art-card{position:absolute;left:0;bottom:0;background:#fcfaf3;color:var(--olive);padding:22px 26px;width:56%;font:italic 30px 'Playfair Display',serif}.hero-art-card small{display:block;font:9px 'DM Sans',sans-serif;letter-spacing:1.5px;text-transform:uppercase;margin-top:7px}
 .stButton>button,.stLinkButton>a{background:var(--olive)!important;border:1px solid var(--olive)!important;color:#fff!important;border-radius:0!important;min-height:43px;font:500 13px 'DM Sans',sans-serif!important;padding:.55rem 1.15rem!important;transition:all .2s ease}.stButton>button:hover,.stLinkButton>a:hover{background:var(--ink)!important;border-color:var(--ink)!important;transform:translateY(-1px)}.nav-button .stButton>button{background:transparent!important;border-color:transparent!important;color:var(--ink)!important;padding:.35rem .55rem!important;min-height:36px}.nav-button .stButton>button:hover,.nav-active .stButton>button{border-bottom:1px solid var(--olive)!important;background:transparent!important;color:var(--olive)!important;transform:none}.hero-note{font-size:11px;color:#666a60;margin-top:26px}.section-title{font:500 clamp(35px,4vw,54px)/1.07 'Playfair Display',Georgia,serif;letter-spacing:-1.4px;color:var(--ink);margin:0 0 19px}.section-copy{font-size:13px;color:#696d62;max-width:360px}.intro-band{background:#ebe7d9;padding:42px 38px;margin:53px 0}.intro-band h2{font:500 clamp(35px,4vw,52px)/1.06 'Playfair Display',Georgia,serif;margin:0}.intro-band h2 em{color:var(--gold)}.intro-copy{max-width:590px;color:#63675c;font-size:14px;margin:15px 0}.stat{border-left:1px solid var(--line);padding-left:18px}.stat strong{display:block;font:500 21px 'Playfair Display',serif}.stat span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#77796f;margin-top:4px}
 .service-card{background:#eff0e8;min-height:278px;padding:23px 22px 20px;display:flex;flex-direction:column}.service-card.warm{background:#e5ddcf}.service-card.olive{background:var(--olive);color:white}.service-number{font-size:9px;letter-spacing:1px;opacity:.7}.service-icon{font:31px 'Playfair Display',serif;color:var(--gold);margin:15px 0 8px}.service-card h3{font:500 23px 'Playfair Display',serif;margin:0 0 9px}.service-card p{font-size:12px;line-height:1.55;color:#63675c;min-height:56px}.service-card.olive p{color:#eef0e7}.service-card .duration{font-size:10px;color:inherit;opacity:.75;margin-top:auto}.service-card .stButton{margin-top:8px}.services-note{font-size:11px;color:#77796f;margin-top:14px}.ritual-band{background:#d3d5c5;padding:0}.ritual-copy{padding:35px 8%}.ritual-copy p{font-size:13px;color:#5f6657;max-width:400px}.ritual-photo{min-height:380px;background-position:center;background-size:cover;position:relative}.ritual-caption{position:absolute;bottom:0;left:0;background:rgba(45,51,42,.7);color:#fff;font:italic 29px 'Playfair Display',serif;padding:18px 25px}.gallery-photo{height:280px;object-fit:cover;width:100%;display:block}.gallery-placeholder{height:280px;background:linear-gradient(145deg,#e4dfd0,#c8cbb6);display:grid;place-items:center;color:var(--olive);font:italic 24px 'Playfair Display',serif}.contact-band{background:var(--olive);color:white;text-align:center;padding:61px 24px}.contact-band h2{font:500 clamp(37px,4.7vw,58px)/1.07 'Playfair Display',serif;max-width:700px;margin:0 auto 16px}.contact-band h2 em{color:#f1dfb9}.contact-band p{font-size:13px;color:#eef0e5}.location-title{font:500 clamp(32px,3.5vw,46px)/1.08 'Playfair Display',serif;margin:0}.map-frame{width:100%;height:345px;border:0;filter:grayscale(.5) saturate(.7)}.aura-footer{display:flex;justify-content:space-between;align-items:center;padding:28px 0;color:#77796e;font-size:10px;border-top:1px solid var(--line);margin-top:28px}.aura-footer a{color:var(--olive)}
@@ -65,6 +75,7 @@ div[data-testid="stHorizontalBlock"]:has(>div[data-testid="column"]:nth-child(5)
 @media(max-width:760px){.intro-band{display:block}.stats-row{gap:15px}div[data-testid="stHorizontalBlock"]:has(>div[data-testid="column"]:nth-child(5)) .stButton>button{padding:.3rem .15rem!important;font-size:10px!important}}
 .site-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:5px 0 16px;margin-bottom:35px}.site-nav{display:flex;align-items:center;gap:28px}.site-nav a{font-size:13px;color:var(--ink);text-decoration:none;padding:9px 0;border-bottom:1px solid transparent}.site-nav a:hover,.site-nav a.active{color:var(--olive);border-bottom-color:var(--olive)}.site-nav a.nav-cta{background:var(--olive);color:white;border:1px solid var(--olive);padding:10px 16px}.site-nav a.nav-cta:hover{background:var(--ink)}.contact-link{display:inline-flex;align-items:center;justify-content:center;margin-top:18px;padding:12px 22px;background:#f4f0e6;color:var(--ink);text-decoration:none;font-size:12px}.contact-link:hover{background:#fff}
 @media(max-width:760px){.site-header{align-items:flex-start;gap:15px;flex-direction:column;margin-bottom:24px}.site-nav{gap:15px;flex-wrap:wrap}.site-nav a{font-size:12px}.site-nav a.nav-cta{padding:8px 12px}}
+@media(max-width:760px){.brand-mark{width:130px;height:50px}}
 .contact-link{display:inline-flex;align-items:center;justify-content:center;margin-top:18px;padding:12px 22px;background:#f4f0e6;color:var(--ink);text-decoration:none;font-size:12px}.contact-link:hover{background:#fff}[data-testid="stImage"] img{width:100%;height:265px;object-fit:cover}
 .hero-secondary{display:inline-block;color:var(--ink);font-size:12px;text-decoration:none;border-bottom:1px solid var(--ink);padding:8px 0 5px}.hero-secondary:hover{color:var(--olive);border-color:var(--olive)}
 @media(max-width:760px){[data-testid="stImage"] img{height:185px}}
@@ -122,7 +133,13 @@ def minutes_after_midnight(value):
 def header():
     logo_column, nav_column = st.columns([1.2, 2.8], vertical_alignment="center")
     with logo_column:
-        st.markdown("<div class='aura-logo'><span class='aura-seal'>✦</span><span class='aura-word'>AURA<small>wellness center</small></span></div>", unsafe_allow_html=True)
+        b = business()
+        logo = image_src(b.get("logo"))
+        if logo:
+            mark = f"<img class='brand-mark' src='{logo}' alt='Logo de {escape(b['name'])}'>"
+            st.markdown(f"<div class='aura-logo'>{mark}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='aura-logo'><span class='aura-seal'>✦</span><span class='aura-word'>{escape(b['name'])}<small>Centro de bienestar</small></span></div>", unsafe_allow_html=True)
     with nav_column:
         st.radio("Navegación", ["Inicio", "Servicios", "Reservar", "Administrar"], horizontal=True, label_visibility="collapsed", key="aura_page")
     st.markdown("<div class='aura-top'></div>", unsafe_allow_html=True)
@@ -150,7 +167,7 @@ def public_page():
         st.markdown(hero_art(), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<div class='intro-band'><div><p class='eyebrow'>Bienvenidos a Aura</p><h2>Un espacio creado para <em>cuidar de ti.</em></h2></div><div><p class='intro-copy'>Creemos que el bienestar se construye en los pequeños momentos: cuando escuchas tu cuerpo, respiras con tranquilidad y eliges cuidarte.</p><div class='stats-row'><div class='stat'><strong>Atención</strong><span>personalizada</span></div><div class='stat'><strong>Bienestar</strong><span>integral</span></div><div class='stat'><strong>Cali</strong><span>Colombia</span></div></div></div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='intro-band'><div><p class='eyebrow'>Bienvenidos a {escape(b['name'])}</p><h2>Un espacio creado para <em>cuidar de ti.</em></h2></div><div><p class='intro-copy'>Creemos que el bienestar se construye en los pequeños momentos: cuando escuchas tu cuerpo, respiras con tranquilidad y eliges cuidarte.</p><div class='stats-row'><div class='stat'><strong>Atención</strong><span>personalizada</span></div><div class='stat'><strong>Bienestar</strong><span>integral</span></div><div class='stat'><strong>Cali</strong><span>Colombia</span></div></div></div></div>", unsafe_allow_html=True)
 
     st.markdown("<p class='eyebrow'>Nuestros servicios</p><h2 class='section-title'>Lo que tu cuerpo necesita, <em>en un solo lugar.</em></h2>", unsafe_allow_html=True)
     st.markdown("<p class='section-copy'>Te acompañamos a elegir el servicio más adecuado para tu momento.</p>", unsafe_allow_html=True)
@@ -192,12 +209,12 @@ def public_page():
     st.markdown(f"<br><p class='eyebrow'>Encuéntranos</p><h2 class='location-title'>Estamos en <em>{escape(b['address'])}.</em></h2><p class='section-copy'>Visítanos y regálate un momento para cuidar de ti.</p>", unsafe_allow_html=True)
     map_query = quote_plus(b["address"] or b["city"])
     components.html(f'<iframe title="Ubicación de Aura" width="100%" height="345" style="border:0;filter:grayscale(.5) saturate(.7)" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q={map_query}&output=embed"></iframe>', height=355, scrolling=False)
-    st.markdown(f"<div class='aura-footer'><span>AURA · Wellness Center</span><span>{escape(b['city'])} · Un espacio para cuidarte</span><span>© Aura Centro de Bienestar</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='aura-footer'><span>{escape(b['name'])} · Centro de Bienestar</span><span>{escape(b['city'])} · Un espacio para cuidarte</span><span>© {escape(b['name'])}</span></div>", unsafe_allow_html=True)
 
 
 def booking_page():
     data = st.session_state.aura_data
-    st.markdown("<p class='eyebrow'>Agenda tu momento Aura</p><h1 class='section-title'>Elige un servicio y encuentra tu <em>mejor momento.</em></h1><p class='section-copy'>Selecciona el servicio y un horario disponible. Te contactaremos para confirmar.</p>", unsafe_allow_html=True)
+    st.markdown(f"<p class='eyebrow'>Agenda tu momento {escape(data['business']['name'])}</p><h1 class='section-title'>Elige un servicio y encuentra tu <em>mejor momento.</em></h1><p class='section-copy'>Selecciona el servicio y un horario disponible. Te contactaremos para confirmar.</p>", unsafe_allow_html=True)
     services = data["services"]
     service_names = [service["name"] for service in services]
     preferred = st.session_state.get("selected_service")
@@ -259,7 +276,7 @@ def admin_page():
                 st.error("La contraseña no coincide.")
         return
 
-    st.markdown("<p class='eyebrow'>Administración</p><h1 class='admin-heading'>Tu espacio Aura.</h1><p class='subtle'>Organiza tus citas, disponibilidad y la información que ven tus clientes.</p>", unsafe_allow_html=True)
+    st.markdown(f"<p class='eyebrow'>Administración</p><h1 class='admin-heading'>Tu espacio {escape(business()['name'])}.</h1><p class='subtle'>Organiza tus citas, disponibilidad y la información que ven tus clientes.</p>", unsafe_allow_html=True)
     agenda_tab, services_tab, content_tab = st.tabs(["Agenda de citas", "Servicios y horarios", "Página e imágenes"])
     data = st.session_state.aura_data
     with agenda_tab:
@@ -362,8 +379,9 @@ def admin_page():
 
     with content_tab:
         b = data["business"]
-        st.markdown("<p class='subtle'>Actualiza los datos que aparecen en la web pública.</p>", unsafe_allow_html=True)
+        st.markdown("<p class='subtle'>Actualiza el nombre, el logo y los datos que aparecen en la web pública.</p>", unsafe_allow_html=True)
         with st.form("business_content"):
+            company_name = st.text_input("Nombre de la empresa", b["name"])
             city = st.text_input("Ciudad", b["city"])
             address = st.text_input("Dirección del centro para el mapa", b["address"])
             phone = st.text_input("WhatsApp con indicativo de país", b["phone"])
@@ -371,8 +389,18 @@ def admin_page():
             subtitle = st.text_area("Texto de presentación", b["subtitle"])
             save_content = st.form_submit_button("Guardar información")
         if save_content:
-            b.update({"city": city.strip(), "address": address.strip(), "phone": phone.strip().replace("+", "").replace(" ", ""), "title": title.strip(), "subtitle": subtitle.strip()})
-            st.success("Información actualizada.")
+            if company_name.strip():
+                b.update({"name": company_name.strip(), "city": city.strip(), "address": address.strip(), "phone": phone.strip().replace("+", "").replace(" ", ""), "title": title.strip(), "subtitle": subtitle.strip()})
+                st.success("Información actualizada.")
+            else:
+                st.error("El nombre de la empresa no puede quedar vacío.")
+        logo_upload = st.file_uploader("Logo de la empresa", type=["png", "jpg", "jpeg", "webp"], key=f"logo_upload_{st.session_state.logo_upload_version}", help="Idealmente usa PNG con fondo transparente o una imagen cuadrada. El logo aparece junto al nombre en la página pública.")
+        if logo_upload is not None:
+            b["logo"] = {"mime": logo_upload.type, "data": logo_upload.getvalue()}
+            st.success("Logo actualizado en esta sesión.")
+        if b.get("logo"):
+            st.image(b["logo"]["data"], caption="Vista previa del logo", width=260)
+            st.button("Quitar logo", key="remove_logo", on_click=clear_logo)
         hero_upload = st.file_uploader("Foto de portada (opcional)", type=["jpg", "jpeg", "png", "webp"], key=f"hero_upload_{st.session_state.hero_upload_version}")
         if hero_upload is not None:
             b["hero_image"] = {"mime": hero_upload.type, "data": hero_upload.getvalue()}
@@ -393,7 +421,7 @@ def admin_page():
                     st.image(image["data"] if isinstance(image, dict) else image, use_container_width=True)
         if b.get("gallery"):
             st.button("Quitar fotos de la galería", key="clear_gallery", on_click=clear_gallery)
-        st.markdown("<p class='subtle'>En esta demo los cambios viven en la sesión actual de Streamlit. Para compartirlos de forma permanente entre dispositivos se conectará una base de datos.</p>", unsafe_allow_html=True)
+        st.markdown("<p class='subtle'>En esta demo el nombre, el logo, las fotos y las reservas solo viven en la sesión actual. Para que todas las personas vean los mismos cambios y no se pierdan al reiniciar la app, hay que conectar almacenamiento permanente.</p>", unsafe_allow_html=True)
 
 
 def set_booking_status(booking_id, status):
@@ -411,6 +439,11 @@ def clear_hero():
 def clear_gallery():
     st.session_state.aura_data["business"]["gallery"] = []
     st.session_state.gallery_upload_version += 1
+
+
+def clear_logo():
+    st.session_state.aura_data["business"]["logo"] = None
+    st.session_state.logo_upload_version += 1
 
 
 header()
